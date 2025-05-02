@@ -1,0 +1,42 @@
+--- a/kernel/time/sleep_timeout.c
++++ b/kernel/time/sleep_timeout.c
+@@ -381,8 +393,20 @@ void msleep(unsigned int msecs)
+  */
+ void msleep(unsigned int msecs)
+ {
+-	unsigned long timeout = msecs_to_jiffies(msecs);
++	int jiffs = msecs_to_jiffies(msecs);
++	unsigned long timeout;
+ 
++	/*
++	 * Use high resolution timers where the resolution of tick based
++	 * timers is inadequate.
++	 */
++	if (jiffs < 5 && hrtimer_resolution < NSEC_PER_SEC / HZ) {
++		while (msecs)
++			msecs = schedule_msec_hrtimeout_uninterruptible(msecs);
++		return;
++	}
++	timeout = msecs_to_jiffies(msecs);
++
+ 	while (timeout)
+ 		timeout = schedule_timeout_uninterruptible(timeout);
+ }
+@@ -402,7 +426,15 @@ unsigned long msleep_interruptible(unsigned int msecs)
+  */
+ unsigned long msleep_interruptible(unsigned int msecs)
+ {
+-	unsigned long timeout = msecs_to_jiffies(msecs);
++	int jiffs = msecs_to_jiffies(msecs);
++	unsigned long timeout;
++
++	if (jiffs < 5 && hrtimer_resolution < NSEC_PER_SEC / HZ) {
++		while (msecs && !signal_pending(current))
++			msecs = schedule_msec_hrtimeout_interruptible(msecs);
++		return msecs;
++	}
++	timeout = msecs_to_jiffies(msecs);
+ 
+ 	while (timeout && !signal_pending(current))
+ 		timeout = schedule_timeout_interruptible(timeout);
+
