@@ -1,0 +1,20 @@
+--- a/kernel/time/sleep_timeout.c
++++ b/kernel/time/sleep_timeout.c
+@@ -6,6 +6,7 @@
+ #include <linux/jiffies.h>
+ #include <linux/timer.h>
+ #include <linux/sched/signal.h>
++#include <linux/freezer.h>
+ #include <linux/sched/debug.h>
+ 
+ #include "tick-internal.h"
+@@ -312,7 +313,7 @@ long __sched schedule_msec_hrtimeout(long timeout)
+ 	 * (yet) better than Hz, as would occur during startup, use regular
+ 	 * timers.
+ 	 */
+-	if (jiffs > 4 || hrtimer_resolution >= NSEC_PER_SEC / HZ)
++	if (jiffs > 4 || hrtimer_resolution >= NSEC_PER_SEC / HZ || pm_freezing)
+ 		return schedule_timeout(jiffs);
+ 
+ 	secs = timeout / 1000;
+
